@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/flask.Dockerfile
+    container_name: flask_web
+    depends_on:
+      - db
+    env_file:
+      - .env        # non‑secret config
+    environment:
+      # Point SQLAlchemy / app to Postgres
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD}@db:5432/${DB_NAME}
+      # If using file-based secrets instead, pass a *_FILE var and read file in app
+      # DB_PASSWORD_FILE: /run/secrets/db_password
+    ports:
+      - "5000:5000"
+    volumes:
+      # Optional: live code reload in dev
+      # - ./app:/app
+    # secrets:
+    #   - db_password
+
+  db:
+    image: postgres:16
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # expose only for local dev
+
+volumes:
+  db_data:
+
+# Example of compose‑level file secret (Compose v3 with Swarm)
+# secrets:
+#   db_password:
+#     file: ./secrets/db_password.txt
