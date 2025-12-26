@@ -1,0 +1,19 @@
+# configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  FLASK_ENV: "production"
+  FLASK_DEBUG: "0"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "appdb"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+data:
+  POSTGRES_DB: "appdb"
+  POSTGRES_USER: "appuser"
