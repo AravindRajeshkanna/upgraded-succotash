@@ -1,0 +1,68 @@
+# overlays/blue/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-api-blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-api
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: flask-api
+        version: blue
+    spec:
+      containers:
+      - name: flask-api
+        image: your-docker-user/flask-app:v1.0  # Stable version
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+---
+# overlays/blue/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-api
+spec:
+  selector:
+    app: flask-api
+    version: blue
+  ports:
+  - port: 80
+    targetPort: 5000
+---
+# overlays/blue/virtualservice.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: flask-vs
+spec:
+  hosts:
+  - "flask.local"
+  gateways:
+  - flask-gateway
+  http:
+  - route:
+    - destination:
+        host: flask-api
+        subset: blue
+        port:
+          number: 80
+      weight: 100
+---
+# overlays/blue/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base
+- deployment.yaml
+- service.yaml
+- virtualservice.yaml
