@@ -1,0 +1,46 @@
+# overlays/green/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-api-green
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-api
+      version: green
+  template:
+    metadata:
+      labels:
+        app: flask-api
+        version: green
+    spec:
+      containers:
+      - name: flask-api
+        image: your-docker-user/flask-app:v1.1  # New version
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+---
+# overlays/green/service.yaml (same selector as blue)
+---
+# overlays/green/virtualservice.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: flask-api-subsets
+spec:
+  host: flask-api
+  subsets:
+  - name: blue
+    labels:
+      version: blue
+  - name: green
+    labels:
+      version: green
+---
+# overlays/green/kustomization.yaml (similar to blue)
