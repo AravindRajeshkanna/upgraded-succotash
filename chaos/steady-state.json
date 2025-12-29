@@ -1,0 +1,61 @@
+# steady-state.json
+{
+  "version": "1.3.0",
+  "title": "Flask API Steady State",
+  "description": "Normal SLI behavior before chaos",
+  "steady-state-hypothesis": {
+    "title": "API is healthy",
+    "probes": [
+      {
+        "type": "probe",
+        "name": "flask-api-availability-ok",
+        "tolerance": 200,
+        "provider": {
+          "type": "kubernetes",
+          "entrypoint": "k8s-objects"
+        },
+        "spec": {
+          "objects": [
+            {
+              "kind": "deployment",
+              "name": "flask-api-blue",
+              "namespace": "default"
+            }
+          ]
+        }
+      },
+      {
+        "type": "probe",
+        "name": "flask-api-pods-ready",
+        "tolerance": 200,
+        "provider": {
+          "type": "kubernetes",
+          "entrypoint": "k8s-ready"
+        },
+        "spec": {
+          "ns": "default",
+          "labels": {
+            "app": "flask-api"
+          }
+        }
+      },
+      {
+        "type": "probe",
+        "name": "flask-api-http-ok",
+        "timeout": 10,
+        "provider": {
+          "type": "http",
+          "entrypoint": "http-probe"
+        },
+        "spec": {
+          "url": "http://flask.local:8080/health",
+          "timeout": 5,
+          "method": "GET",
+          "response": {
+            "status_code": 200
+          }
+        }
+      }
+    ]
+  }
+}
