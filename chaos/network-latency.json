@@ -1,0 +1,44 @@
+# experiments/network-latency.json
+{
+  "version": "1.3.0",
+  "title": "Inject Network Latency Flask→Postgres",
+  "description": "Add 500ms latency between Flask and Postgres",
+  "steady-state-hypothesis": {
+    "title": "Latency SLI remains within SLO",
+    "probes": [
+      {
+        "type": "probe",
+        "name": "flask-p99-latency-ok",
+        "provider": {
+          "type": "prometheus",
+          "entrypoint": "prom-query"
+        },
+        "spec": {
+          "url": "http://prometheus.monitoring.svc:9090",
+          "query": "histogram_quantile(0.99, sum(rate(istio_request_duration_milliseconds_bucket{destination_service=\"postgres.default.svc.cluster.local\"}[5m])) by (le)) < 1000"
+        }
+      }
+    ]
+  },
+  "method": [
+    {
+      "type": "action",
+      "name": "inject-latency-to-postgres",
+      "provider": {
+        "type": "kubernetes",
+        "entrypoint": "k8s-network-chaos"
+      },
+      "spec": {
+        "target": {
+          "label_selector": "app=postgres"
+        },
+        "ns": "default",
+        "type": "delay",
+        "delay": "500ms",
+        "container": "postgres",
+        "direction": "to"
+      },
+      "pause": "60s"
+    }
+  ]
+}
