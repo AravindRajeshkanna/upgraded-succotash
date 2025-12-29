@@ -1,0 +1,53 @@
+# istio-gateway.yaml
+apiVersion: networking.k8s.io/v1
+kind: Service
+metadata:
+  name: flask-api
+  labels:
+    app: flask-api
+spec:
+  selector:
+    app: flask-api
+  ports:
+  - port: 80
+    targetPort: 5000
+    name: http
+  type: ClusterIP  # Changed from LoadBalancer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: flask-service-account
+  labels:
+    account: flask
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: flask-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "flask.local"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: flask-vs
+spec:
+  hosts:
+  - "flask.local"
+  gateways:
+  - flask-gateway
+  http:
+  - route:
+    - destination:
+        host: flask-api
+        port:
+          number: 80
