@@ -1,0 +1,32 @@
+# overlays/canary/virtualservice.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: flask-vs-canary
+spec:
+  hosts:
+  - "flask.local"
+  gateways:
+  - flask-gateway
+  http:
+  - route:
+    - destination:
+        host: flask-api
+        subset: blue
+        port:
+          number: 80
+      weight: 90
+    - destination:
+        host: flask-api
+        subset: green
+        port:
+          number: 80
+      weight: 10  # 10% to green (v1.1)
+---
+# overlays/canary/kustomization.yaml
+resources:
+- ../../base
+- ../../overlays/blue/deployment.yaml
+- ../../overlays/blue/service.yaml
+- ../../overlays/green/deployment.yaml
+- virtualservice.yaml
