@@ -1,0 +1,49 @@
+# experiments/pod-kill.json
+{
+  "version": "1.3.0",
+  "title": "Kill Flask Pod",
+  "description": "Chaos experiment: kill 50% of Flask pods",
+  "steady-state-hypothesis": {
+    "title": "Service remains available",
+    "probes": [
+      {
+        "type": "probe",
+        "name": "flask-pods-min-available",
+        "tolerance": 30,
+        "provider": {
+          "type": "kubernetes",
+          "entrypoint": "k8s-ready"
+        },
+        "spec": {
+          "ns": "default",
+          "labels": {
+            "app": "flask-api"
+          },
+          "count": 1
+        }
+      }
+    ]
+  },
+  "method": [
+    {
+      "type": "action",
+      "name": "kill-flask-pods",
+      "provider": {
+        "type": "kubernetes",
+        "entrypoint": "k8s-delete-namespaced-pod"
+      },
+      "spec": {
+        "label_selector": "app=flask-api",
+        "ns": "default",
+        "grace_period": 0,
+        "percentage": 50
+      },
+      "pause": "30s"
+    }
+  ],
+  "expected-results": [
+    "HPA should scale up",
+    "Availability SLI >99%",
+    "Istio circuit breaker prevents cascading failure"
+  ]
+}
