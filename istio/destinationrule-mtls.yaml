@@ -1,0 +1,20 @@
+# destinationrule-mtls.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: flask-api-mtls
+spec:
+  host: flask-api
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL  # Enforces mTLS
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: postgres-mtls
+spec:
+  host: postgres
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
