@@ -1,0 +1,58 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: montecarlo-mpi
+spec:
+  minAvailable: 5        # 1 master + 4 workers must be ready
+  schedulerName: volcano
+  plugins:
+    ssh: []              # configure passwordless SSH
+    svc: []
+  tasks:
+    - name: master
+      replicas: 1
+      policies:
+        - event: TaskCompleted
+          action: CompleteJob
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: master
+              image: your-registry/mpi-montecarlo:latest
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  # Volcano ssh plugin populates hostfile at /volcano/hosts
+                  cat /volcano/hosts
+
+                  mpirun \
+                    --allow-run-as-root \
+                    --hostfile /volcano/hosts \
+                    -np 8 \
+                    /home/mpiuser/monte_carlo
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: "1Gi"
+                limits:
+                  cpu: "1"
+                  memory: "1Gi"
+    - name: worker
+      replicas: 4
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: worker
+              image: your-registry/mpi-montecarlo:latest
+              command: ["/usr/sbin/sshd","-D"]
+              resources:
+                requests:
+                  cpu: "2"
+                  memory: "4Gi"
+                limits:
+                  cpu: "2"
+                  memory: "4Gi"
