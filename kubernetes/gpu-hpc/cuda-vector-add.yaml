@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cuda-vector-add
+spec:
+  restartPolicy: OnFailure
+  containers:
+    - name: cuda-vector-add
+      image: nvidia/cuda:12.6.0-devel-ubuntu22.04
+      command: ["/bin/bash"]
+      args:
+        - "-c"
+        - |
+          echo "NVIDIA-SMI output:"
+          nvidia-smi
+          echo "CUDA Vector Addition Test:"
+          cat > vector_add.cu << 'EOF'
+          #include <stdio.h>
+          #include <cuda_runtime.h>
+          
+          __global__ void vectorAdd(const float *A, const float *B, float *C, int N) {
+              int i = blockIdx.x * blockDim.x + threadIdx.x;
+              if (i < N) C[i] = A[i] + B[i];
+          }
+          
+          int main() {
+              int N = 1<<24;
+              size_t size = N * sizeof(float);
+              float *h_A, *h_B, *h_C;
+              cudaMallocManaged(&h_A, size);
+              cudaMallocManaged(&h_B, size);
+              cudaMallocManaged(&h_C, size);
+              
+              for (int i = 0; i < N; i++) {
+                  h_A[i] = rand()/(float)RAND_MAX;
+                  h_B[i] = rand()/(float)RAND_MAX;
+              }
+              
+              dim3 dimBlock(256, 1, 1);
+              dim3 dimGrid((N + 255) / 256, 1, 1);
+              vectorAdd<<<dimGrid, dimBlock>>>(h_A, h_B, h_C, N);
+              cudaDeviceSynchronize();
+              
+              float maxError = 0.0f;
+              for (int i = 0; i < N; i++)
+                  maxError = fmax(maxError, fabs(h_A[i] + h_B[i] - h_C[i]));
+              
+              printf("Max error: %f\n", maxError);
+              printf("Test PASSED\n");
+              cudaFree(h_A); cudaFree(h_B); cudaFree(h_C);
+              return 0;
+          }
+          EOF
+          nvcc vector_add.cu -o vector_add
+          ./vector_add
+      resources:
+        limits:
+          nvidia.com/gpu: 1
