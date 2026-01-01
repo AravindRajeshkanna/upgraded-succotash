@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gpu-hpc-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: 10.0.0.10        # NFS server IP/hostname
+    path: /exports/gpu-hpc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gpu-hpc-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  volumeName: gpu-hpc-pv
