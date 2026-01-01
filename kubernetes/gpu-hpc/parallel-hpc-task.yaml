@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mpi-workers
+spec:
+  clusterIP: None
+  selector:
+    app: mpi-worker
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mpi-worker
+spec:
+  serviceName: mpi-workers
+  replicas: 4   # number of MPI ranks (or ranks per pod)
+  selector:
+    matchLabels:
+      app: mpi-worker
+  template:
+    metadata:
+      labels:
+        app: mpi-worker
+    spec:
+      containers:
+        - name: worker
+          image: your-registry/mpi-montecarlo:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/sbin/sshd","-D"]
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mpi-launcher
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: launcher
+          image: your-registry/mpi-montecarlo:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              # Build hostfile based on StatefulSet DNS
+              WORKERS=4
+              : > /tmp/hosts
+              for i in $(seq 0 $((WORKERS-1))); do
+                echo "mpi-worker-$i.mpi-workers:2" >> /tmp/hosts
+              done
+
+              cat /tmp/hosts
+
+              mpirun \
+                --allow-run-as-root \
+                --hostfile /tmp/hosts \
+                -np 8 \
+                /home/mpiuser/monte_carlo
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
