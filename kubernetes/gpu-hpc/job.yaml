@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gpu-mpi-hpc-job
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: gpu-mpi-launcher
+          image: your-registry/gpu-mpi-hpc:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              nvidia.com/gpu: 4      # 4 GPUs total; 1 per MPI rank
+              cpu: "8"
+              memory: "32Gi"
+            requests:
+              nvidia.com/gpu: 4
+              cpu: "8"
+              memory: "32Gi"
+          volumeMounts:
+            - name: shared-storage
+              mountPath: /shared
+          env:
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "compute,utility"
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              # Example: 4 MPI ranks, 1 GPU each
+              NUM_PROCS=4
+
+              mpirun \
+                --allow-run-as-root \
+                -np ${NUM_PROCS} \
+                -bind-to none -map-by slot \
+                -x NCCL_DEBUG=INFO \
+                -x CUDA_VISIBLE_DEVICES \
+                -x NVIDIA_VISIBLE_DEVICES \
+                python /workspace/distributed_gpu_app.py \
+                  --world-size ${NUM_PROCS} \
+                  --output-dir /shared/results
+      volumes:
+        - name: shared-storage
+          persistentVolumeClaim:
+            claimName: gpu-hpc-pvc   # or gpu-hpc-hostpath-pvc
